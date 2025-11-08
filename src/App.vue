@@ -1274,8 +1274,9 @@ const clearError = () => {
 const initializeMultiModalService = async () => {
   const apiKey = (apiKeyInput.value || connectionStore.apiKey || '').trim()
   if (!apiKey) {
+    const errorMsg = '请先配置 API Key 后再开始对话'
     console.error('No API key provided for MultiModalService')
-    return
+    throw new Error(errorMsg)
   }
 
   try {
@@ -1355,7 +1356,7 @@ const handleConnect = async () => {
 
 const startCall = async (): Promise<void> => {
   try {
-    console.log('🎤 Requesting permissions...')
+    console.log('🎤 准备启动通话...')
 
     // 直接使用已保存的API Key，不再检查
     const savedApiKey = getStorageItem(STORAGE_KEYS.apiKey)
@@ -1363,12 +1364,23 @@ const startCall = async (): Promise<void> => {
       apiKeyInput.value = savedApiKey
     }
 
+    // 初始化服务
+    console.log('🔧 初始化多模态服务...')
     await initializeMultiModalService()
-    await multiModalService.value!.startListening()
+
+    // 验证服务已成功初始化
+    if (!multiModalService.value) {
+      throw new Error('服务初始化失败：MultiModalService 未能正确创建')
+    }
+
+    // 请求麦克风和屏幕捕获权限，然后开始监听
+    console.log('🎤 请求麦克风权限并开始监听...')
+    await multiModalService.value.startListening()
 
     isInCall.value = true
     startCallTimer()
     retryCount.value = 0
+    console.log('✅ 通话已启动')
   } catch (error) {
     console.error('Failed to start call:', error)
 
@@ -1380,6 +1392,10 @@ const startCall = async (): Promise<void> => {
         } else if (message.includes('screen')) {
           console.warn('Screen capture permission denied, proceeding without screenshots')
         }
+      } else if (message.includes('api key')) {
+        showError('配置错误', error.message)
+        // 打开设置面板以便用户配置 API Key
+        showSettings.value = true
       } else {
         showError('启动通话失败', error.message)
       }
