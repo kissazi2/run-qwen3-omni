@@ -984,6 +984,8 @@ const updateAgentConfig = (overrides?: AgentConfigOverrides) => {
   const model = (overrides?.model ?? effectiveModel.value).trim()
   const basePrompt = overrides?.systemPrompt ?? effectiveSystemPrompt.value
   const mergedPrompt = composeSystemPrompt(basePrompt)
+  
+  console.log('🔄 更新 Agent 配置 - 系统提示词:', basePrompt.substring(0, 50) + '...')
 
   // 获取保存的音色偏好
   const savedVoice = preferredVoice.value || getStorageItem('preferredVoice') || DEFAULT_LLM_SETTINGS.voice
@@ -1039,12 +1041,16 @@ const persistSettings = async (config: SettingsPayload & { providerId?: string }
     const newMaxHistoryRounds = config.maxHistoryRounds || 5
     const providerId = config.providerId || currentProviderId.value
 
+    console.log('📝 保存设置 - 系统提示词:', trimmedSystemPrompt ? `${trimmedSystemPrompt.substring(0, 50)}...` : '(空)')
+
     apiKeyInput.value = trimmedApiKey
     baseUrl.value = trimmedBaseUrl || DEFAULT_BASE_URL
     modelName.value = trimmedModel || DEFAULT_LLM_SETTINGS.model
     systemPrompt.value = trimmedSystemPrompt || DEFAULT_SYSTEM_PROMPT
     maxHistoryRounds.value = newMaxHistoryRounds
     currentProviderId.value = providerId
+
+    console.log('✅ 系统提示词已更新到:', systemPrompt.value.substring(0, 50) + '...')
 
     // 保存音色偏好
     if (trimmedVoice) {
@@ -1104,9 +1110,11 @@ const persistSettings = async (config: SettingsPayload & { providerId?: string }
 
     if (trimmedSystemPrompt) {
       setStorageItem(STORAGE_KEYS.systemPrompt, trimmedSystemPrompt)
+      console.log('💾 系统提示词已保存到 localStorage')
     } else {
       removeStorageItem(STORAGE_KEYS.systemPrompt)
       systemPrompt.value = DEFAULT_SYSTEM_PROMPT
+      console.log('🗑️ 系统提示词已清除，恢复为默认值')
     }
 
     // 保存供应商配置
@@ -1115,6 +1123,9 @@ const persistSettings = async (config: SettingsPayload & { providerId?: string }
 
     if (trimmedApiKey) {
       await initializeMultiModalService()
+    } else if (multiModalService.value) {
+      // 如果服务已存在但没有提供新的 API Key，更新现有服务的配置
+      updateAgentConfig()
     }
 
     connectionStore.setConnectionError(null)
